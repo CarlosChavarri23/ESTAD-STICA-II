@@ -1,0 +1,406 @@
+---
+title: "Entregable 3- Grupo 4- Carlos Chávarri"
+author: "Carlos Chávarri"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+El propósisto de la investigación es poder elaborar algún tipo de medición de los niveles de democracia, en contextos dónde exista poca información. 
+Presentar en html. ANEXO 
+La explicación. es con qué prueba nos quedamos . 
+Variables 
+hipótesis en conjunto 
+
+Es necesario cambiar el nombre de las variables . 
+Enfocarse en justificar mi análisis político: y elección de mis variables 
+leer la base desde el github  
+ 
+
+
+```{r}
+library(rio)
+library(DescTools)
+library(ggplot2)
+library(moments)
+library(Rmisc)
+library(e1071)
+library(psych)
+library(dplyr)
+library(gplots)
+library(vcd)
+library(PMCMRplus)
+library(nortest)
+library(car)
+library(stargazer)
+library(lm.beta)
+library(gtools)
+library(jtools)
+library(ggstance)
+library(broom.mixed)
+library(fastDummies)
+library(writexl)
+library(lmtest)
+library(polycor)
+library(ggcorrplot)
+library(matrixcalc)
+library(GPArotation)
+library(lavaan)
+library(BBmisc)
+library(cluster)
+library(factoextra)
+library(qpcR)
+
+```
+
+
+
+```{r}
+#Repositorio 
+
+link="https://github.com/CarlosChavarri23/ESTAD-STICA-II.git"
+
+```
+
+
+```{r}
+vdem = import("https://github.com/CarlosChavarri23/ESTAD-STICA-II/blob/main/Data.rds?raw=true")
+
+```
+
+El vdem se debe estar leyendo desde github. Poner la base así 
+
+```{r}
+#1. Variable dependiente - Índice de Democracia Liberal (v2x_libdem)
+
+summary(vdem$v2x_libdem)
+```
+
+```{r}
+str(vdem$v2x_libdem)
+```
+
+#2. Variables independientes
+#2.1. Independencia de la Corte Suprema (v2juhcind_ord)
+
+```{r}
+str(vdem$v2juhcind_ord)
+summary(vdem$v2juhcind_ord)
+```
+v2juhcind_ord v2juncind_ord  v2peasbecon_ord  v2elembaut_ord  v2mecrit_ord  v2dlcountr_ord
+#2.2. Independencia de las otras cortes (v2juncind_ord)
+```{r}
+str(vdem$v2juncind_ord)
+summary(vdem$v2juncind_ord)
+```
+
+#2.3. Acceso a oportunidades de negocios con el Estado a partir de posición socioeconómica (v2peasbecon_ord)
+```{r}
+str(vdem$v2peasbecon_ord)
+summary(vdem$v2peasbecon_ord)
+```
+#3. variables independientes Gabriela Rollano 
+#3.1.Autonomía de los Organismos Electorales (v2elembaut_ord)
+
+```{r}
+str(vdem$v2elembaut_ord)
+summary(vdem$v2elembaut_ord)
+```
+
+#3.2. Medios de comunicación escritos o transmitidos críticos del gobierno (v2mecrit_ord)
+```{r}
+str(vdem$v2mecrit_ord)
+summary(vdem$v2mecrit_ord)
+```
+
+#3.3. Respeto a Contraargumentos (v2dlcountr_ord)
+```{r}
+str(vdem$v2dlcountr_ord)
+summary(vdem$v2dlcountr_ord)
+```
+
+#4. Armar la base de apoyo
+```{r}
+factor_carlos = subset(vdem, select = c(country_name, year, v2x_libdem, v2juhcind_ord, v2juncind_ord,v2peasbecon_ord,  v2elembaut_ord, v2mecrit_ord, v2dlcountr_ord))
+```
+
+Row names 
+
+
+
+```{r}
+factor_carlos = factor_carlos[factor_carlos$year==2021,]
+```
+
+```{r}
+factor_carlos$country_name = NULL
+factor_carlos$year = NULL
+factor_carlos$v2x_libdem = NULL
+```
+
+#I. Análisis Factorial Exploratorio
+#5. Explorar las correlaciones entre las variables
+```{r}
+corMatrix_c = polycor::hetcor(factor_carlos)$correlations
+corMatrix_c
+```
+Cómo interpretar esta matriz de correlción? 
+
+
+#6. Graficar la matriz de correlaciones
+```{r}
+ggcorrplot(corMatrix_c)
+```
+
+Cómo interpretar este gráfico ? 
+
+
+No hay cuadrado en blanco,existe una buena correlación ente variables-
+
+
+
+
+
+#7. Verificar validez del análisis factorial
+#7.1. Verificar si variables se pueden factorizar 
+
+---------> Overall MSA es mayor a 0.6, por lo que el análisis factorial es factible. x2 
+ 
+```{r}
+psych::KMO(corMatrix_c)
+```
+#7.2. Descartar una posible matriz de identidad
+Sale FALSE (p-value NO es mayor a 0.05), por lo que el análisis factorial es factible. x2 
+```{r}
+cortest.bartlett(corMatrix_c, n = nrow(factor_carlos))$p.value>0.05
+```
+#7.3. Descartar una posible matriz singular
+Sale FALSE, por lo que el análisis factorial es factible. x2 
+```{r}
+is.singular.matrix(corMatrix_c)
+```
+
+#8. Determinar en cuántos factores se pueden agrupar las variables
+```{r}
+fa.parallel(factor_carlos, fm = "ML", fa = "fa")
+```
+
+Por ahora, nos sugiere agrupar nuestros resultados en uno . 
+
+
+#9. Observar las cargas factoriales y ver en qué factores se ubicaría cada variable
+```{r}
+resfa_c <- fa(factor_carlos, nfactors = 1, cor = "cor", rotate = "varimax", fm = "minres")
+print(resfa_c$loadings, cutoff = 0.5)
+```
+#10. Graficar cómo se agrupan las variables
+```{r}
+fa.diagram(resfa_c)
+```
+#11. Evaluar los resultados obtenidos
+#11.1. ¿Qué variables aportaron más a los factores?
+```{r}
+sort(resfa_c$communality)
+```
+#12. Observar los posibles valores proyectados
+#12.1. Para grabar en la base los puntajes de los factores
+```{r}
+factor_carlos$puntaje = resfa_c$scores
+```
+
+
+
+#II. Análisis Factorial Confirmatorio
+
+#13. Construir un modelo lineal 
+```{r}
+modeloc<- "factorc=~ v2juhcind_ord+v2juncind_ord+v2peasbecon_ord+v2elembaut_ord+v2mecrit_ord+v2dlcountr_ord"
+```
+
+#14. Crear un objeto para hacer las validaciones 
+
+```{r}
+cfa_fit<- cfa(modeloc, data = factor_carlos, std.lv = TRUE, missing = "fiml")
+
+```
+
+#15. Prepara los tests para las validaciones 
+```{r}
+allParamCFA= parameterEstimates(cfa_fit, standardized = T)
+allFitCFA= as.list(fitMeasures(cfa_fit))
+
+```
+
+#16.Ver si cada variable tiene una buena relación con su factor (p-value<0.05 indica que la variable observable tiene buena relación con su latente)
+
+```{r}
+allParamCFA[allParamCFA$op=="=~",]
+```
+#17.. El ChiSquare es NO significativo? (p_value debe ser mayor a 0.05 para que sea bueno
+
+
+No es signicativo: No hay buen indicio. 
+
+
+```{r}
+allFitCFA[c("chisq", "df", "pvalue")]
+
+```
+
+
+#18. El Índice Tucker Lewi es mayor a 0.9?
+
+Por poco pero sí es mayor. Buen indicio.
+
+```{r}
+allFitCFA$tli # > 0.90
+```
+#19. Ver si la raíz del error cuadrático medio de aproximación es menor a 0.05 (ver rmsea)
+```{r}
+allFitCFA[c("rmsea.ci.lower", "rmsea", "rmsea.ci.upper")]
+```
+#20. Hacer predicciones (scores) de las variables latentes
+```{r}
+scorescfa = normalize(lavPredict(cfa_fit), method = "range", margin = 2, range = c(0, 10))
+```
+
+```{r}
+factor_carlos$prediccion = scorescfa
+```
+
+
+
+#III. Clusterización o Análisis de Conglomerados
+#21. Armar una base de apoyo
+```{r}
+cluster_carlos = subset(vdem, select = c(country_name, year, v2x_libdem, v2cldiscm_ord, v2cldiscw_ord, v2clacfree_ord, v2mecenefm_ord, v2mecenefi_ord, v2meharjrn_ord))
+```
+
+```{r}
+cluster_carlos = cluster_carlos[cluster_carlos$year==2021,]
+```
+
+```{r}
+row.names(cluster_carlos) = cluster_carlos$country_name
+```
+
+```{r}
+cluster_carlos$country_name = NULL
+cluster_carlos$year = NULL
+cluster_carlos$v2x_libdem = NULL
+```
+
+#22. Calcular las distancias entre elementos que permita agruparlos en clusters
+```{r}
+g.dist = daisy(cluster_carlos[, c(1:6)], metric = "gower")
+```
+
+#23. Para obtener el número recomendado de clusters
+#23.1. Clusterización no jerárquica (PAM)
+```{r}
+fviz_nbclust(cluster_carlos[, c(1:6)], pam, diss = g.dist, method = "gap_stat", k.max = 10, verbose = F)
+```
+
+*  La estrategia Pam nos sugiere que el número óptimo de clusters es 9 
+
+
+#23.2. Clusterización por agrupación (AGNES)
+```{r}
+fviz_nbclust(cluster_carlos[, c(1:6)], hcut, diss = g.dist, method = "gap_stat", k.max = 10, verbose = F, hc_func = "agnes")
+```
+La estrategia AGNES sugiere que el número óptimo de clusters es 4. 
+#23.3. Clusterización por división (DIANA)
+```{r}
+fviz_nbclust(cluster_carlos[, c(1:6)], hcut, diss = g.dist, method = "gap_stat", k.max = 10, verbose = F, hc_func = "diana")
+```
+La estrategia DIANA nos sugiere que el número óptimo de clusters es 4. 
+
+#24. Hacer asignación de clusters en base a número de clusters recomendados
+#24.1. Clusterización no jerárquica (PAM)
+```{r}
+res.pam = pam(g.dist, k = 9, cluster.only = F)
+cluster_carlos$clustPT = res.pam$cluster
+```
+
+#24.2. Clusterización agrupativa (AGNES)
+```{r}
+res.agnes = hcut(g.dist, k = 4, hc_func = "agnes", hc_method = "ward.D")
+cluster_carlos$clustAG = res.agnes$cluster
+```
+
+#24.3. Clusterización divisiva (DIANA)
+```{r}
+res.diana = hcut(g.dist, k = 4, hc_func = "diana")
+cluster_carlos$clustDIV = res.diana$cluster
+```
+
+#25. Dar puntaje a la clusterización
+#25.1. Clusterización no jerárquica (PAM)
+```{r}
+fviz_silhouette(res.pam)
+```
+CASOS MAL AGRUPADOS 
+
+#25.2. Clusterización agrupativa (AGNES)
+```{r}
+fviz_silhouette(res.agnes)
+```
+CASO MORADO Y ROSADO MAL AGRUPADO 
+#25.3. Clusterización divisiva (DIANA)
+```{r}
+fviz_silhouette(res.diana)
+```
+Menos casos mal agrupados (Estrategia escogida)
+
+#26. Encontrar los casos mal clusterizados según cada método
+#26.1. Clusterización no jerárquica (PAM)
+```{r}
+silPAM = data.frame(res.pam$silinfo$widths)
+silPAM$country = row.names(silPAM)
+malPAM = silPAM[silPAM$sil_width<0,"country"]%>%sort() 
+```
+
+#26.2. Clusterización agrupativa (AGNES)
+```{r}
+silAGNES = data.frame(res.agnes$silinfo$widths)
+silAGNES$country = row.names(silAGNES)
+malAGNES = silAGNES[silAGNES$sil_width<0,"country"]%>%sort() 
+```
+
+#26.3. Clusterización divisiva (DIANA)
+```{r}
+silDIANA = data.frame(res.diana$silinfo$widths)
+silDIANA$country = row.names(silDIANA)
+malDIANA = silDIANA[silDIANA$sil_width<0,"country"]%>%sort() 
+```
+
+#26.4. Juntar elementos mal clusterizados en un solo data frame
+
+Por qué?
+
+```{r}
+mal_Clus = as.data.frame(qpcR:::cbind.na(malPAM, malAGNES, malDIANA))
+mal_Clus
+```
+
+#27. Graficar la mejor clusterización (DIANA)
+```{r}
+proyeccion = cmdscale(g.dist, k=2,add = T) 
+cluster_carlos$dim1 <- proyeccion$points[,1]
+cluster_carlos$dim2 <- proyeccion$points[,2]
+base = ggplot(cluster_carlos, aes(x=dim1, y=dim2,label=row.names(cluster_carlos))) 
+base + geom_text(size = 2, aes(color = as.factor(diana))) + labs(title = "DIANA") 
+```
+
+
+
+
+
+
+
+
+
+
