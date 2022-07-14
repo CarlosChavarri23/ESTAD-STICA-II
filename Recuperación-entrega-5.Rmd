@@ -1,0 +1,691 @@
+---
+title: "ENTREGA 5"
+output: html_document
+date: '2022-07-14'
+---
+
+```{r include=FALSE}
+library(rio)
+library(DescTools)
+library(ggplot2)
+library(moments)
+library(Rmisc)
+library(e1071)
+library(psych)
+library(dplyr)
+library(gplots)
+library(vcd)
+library(PMCMRplus)
+library(nortest)
+library(car)
+library(stargazer)
+library(lm.beta)
+library(gtools)
+library(jtools)
+library(ggstance)
+library(broom.mixed)
+library(fastDummies)
+library(writexl)
+library(lmtest)
+library(polycor)
+library(ggcorrplot)
+library(matrixcalc)
+library(GPArotation)
+library(lavaan)
+library(BBmisc)
+library(cluster)
+library(factoextra)
+library(qpcR)
+```
+
+```{r include=FALSE}
+#Repositorio 
+link="https://github.com/CarlosChavarri23/ESTAD-STICA-II.git"
+```
+
+
+```{r include=FALSE}
+vdem = import("https://github.com/saffron29/Trabajo-Final---EST2/blob/main/V-Dem-CY-Core-v12.rds?raw=true")
+```
+
+
+```{r include=FALSE}
+#3. Armar la base de apoyo
+
+vdem_carlos = subset(vdem, select = c(country_name, year, v2x_libdem, v2juhcind_ord,v2peasbecon_ord, v2juncind_ord,v2juhccomp_ord ))
+
+
+```
+
+```{r include=FALSE}
+vdem_carlos = vdem_carlos[vdem_carlos$year==2021,]
+```
+
+```{r include=FALSE}
+vdem_carlos[, c(4:6)] = lapply(vdem_carlos[, c(4:6)], ordered)
+str(vdem_carlos$v2x_libdem)
+```
+
+
+```{r include=FALSE}
+row.names(vdem_carlos)=vdem_carlos$country_name
+(vdem_carlos)
+```
+
+```{r warning=TRUE, include=FALSE}
+vdem_carlos$country_name = NULL
+vdem_carlos$year = NULL
+```
+
+
+
+
+```{r include=FALSE}
+
+modelo1=formula(v2x_libdem~v2juhcind_ord+v2juncind_ord)
+hipot1 = lm(modelo1, data = vdem_carlos)
+summary(hipot1)
+```
+
+```{r include=FALSE}
+
+modelo2=formula(v2x_libdem~v2juhcind_ord+v2peasbecon_ord)
+hipot2 = lm(modelo2, data = vdem_carlos)
+summary(hipot2)
+
+```
+
+
+```{r include=FALSE}
+modelo3=formula(v2x_libdem~v2juhcind_ord+v2juhccomp_ord)
+hipot3 = lm(modelo3, data = vdem_carlos)
+summary(hipot3)
+```
+
+```{r include=FALSE}
+stargazer(hipot1, hipot2, hipot3, type ="text", intercept.bottom = FALSE)
+```
+
+```{r echo=FALSE}
+plot(hipot1, 1)
+
+
+```
+
+```{r echo=FALSE}
+plot(hipot2, 1)
+
+```
+
+
+```{r include=FALSE}
+plot(hipot1, 3)
+```
+
+```{r include=FALSE}
+plot(hipot2, 3)
+```
+
+```{r include=FALSE}
+plot(hipot3, 3)
+```
+
+
+```{r include=FALSE}
+bptest(hipot1)
+```
+EL primer modelo es heterocedástco:! observasción 
+
+```{r include=FALSE}
+bptest(hipot2)
+```
+De igual manera el modelo 2 es heterocedástico. 
+
+```{r include=FALSE}
+bptest(hipot3)
+```
+
+```{r include=FALSE}
+plot(hipot1,2)
+shapiro.test(hipot1$residuals)
+```
+p valor > a 0.005 no hay problema. Existe normalidad de residuos. 
+```{r include=FALSE}
+plot(hipot2,2)
+shapiro.test(hipot2$residuals)
+plot
+
+```
+Existe normalidad de residuos. 
+```{r include=FALSE}
+plot(hipot3,2)
+shapiro.test(hipot3$residuals)
+plot
+```
+
+```{r include=FALSE}
+
+library(DescTools)
+VIF(hipot1)
+```
+
+```{r echo=FALSE}
+VIF(hipot2)
+```
+
+
+```{r warning=TRUE, include=FALSE}
+VIF(hipot3)
+```
+
+```{r include=FALSE}
+ACONG = subset(vdem, select = c(country_name, year, v2x_libdem, v2juhcind_ord, v2juncind_ord,v2peasbecon_ord, v2mecrit_ord, v2dlcountr_ord, v2mecenefm_ord))
+```
+
+```{r include=FALSE}
+ACONG = ACONG[ACONG$year==2021,]
+```
+
+```{r include=FALSE}
+row.names(ACONG) = ACONG$country_name
+```
+
+```{r include=FALSE}
+ACONG$country_name = NULL
+ACONG$year = NULL
+ACONG$v2x_libdem = NULL
+```
+
+
+```{r include=FALSE}
+row.names(ACONG)=ACONG$country_name
+(ACONG)
+```
+
+```{r include=FALSE}
+#22. Calcular las distancias entre elementos que permita agruparlos en clusters
+g.dist = daisy(ACONG[, c(1:6)], metric = "gower")
+```
+```
+
+ 
+```{r include=FALSE}
+res.pam = pam(g.dist, k = 4, cluster.only = F)
+ACONG$clustPT = res.pam$cluster
+```
+
+
+```{r include=FALSE}
+res.agnes = hcut(g.dist, k = 4, hc_func = "agnes", hc_method = "ward.D")
+ACONG$clustAG = res.agnes$cluster
+```
+
+
+```{r include=FALSE}
+res.diana = hcut(g.dist, k = 4, hc_func = "diana")
+ACONG$clustDIV = res.diana$cluster
+```
+
+
+```{r include=FALSE}
+fviz_silhouette(res.pam)
+```
+
+```{r include=FALSE}
+fviz_silhouette(res.agnes)
+```
+
+```{r include=FALSE}
+fviz_silhouette(res.diana)
+```
+
+
+```{r include=FALSE}
+#26. Encontrar los casos mal clusterizados según cada método
+#26.1. Clusterización no jerárquica (PAM)
+
+silPAM = data.frame(res.pam$silinfo$widths)
+silPAM$country = row.names(silPAM)
+malPAM = silPAM[silPAM$sil_width<0,"country"]%>%sort() 
+```
+
+```{r include=FALSE}
+silAGNES = data.frame(res.agnes$silinfo$widths)
+silAGNES$country = row.names(silAGNES)
+malAGNES = silAGNES[silAGNES$sil_width<0,"country"]%>%sort() 
+```
+
+
+```{r include=FALSE}
+silDIANA = data.frame(res.diana$silinfo$widths)
+silDIANA$country = row.names(silDIANA)
+malDIANA = silDIANA[silDIANA$sil_width<0,"country"]%>%sort() 
+```
+
+
+
+
+
+
+```{r include=FALSE}
+mal_Clus = as.data.frame(qpcR:::cbind.na(malPAM, malAGNES, malDIANA))
+mal_Clus
+```
+
+
+```{r include=FALSE}
+proyeccion = cmdscale(g.dist, k=2,add = T) 
+ACONG$dim1 <- proyeccion$points[,1]
+ACONG$dim2 <- proyeccion$points[,2]
+
+base = ggplot(ACONG, aes(x=dim1, y=dim2,label=row.names(ACONG))) 
+base + geom_text(size = 2, aes(color = as.factor(clustPT))) + labs(title = "PAM") 
+```
+
+
+
+
+
+
+
+
+
+
+
+*Profesor, después de realizar varias pruebas y que se me reporten muchos errores puedo presentar lo siguiente: Una demostración que he comprendido gran partes de las pruebas enseñadas durante el curso y cierta agilidad en el manejo del Software. Tuve ciertos problemas al intentar correr mi data con otras de las variables , razón por la que fue mi reducida mi justificación teórica de las variables. 
+
+
+El presente trabajo busca hacer un diagnóstico o reporte de las democracias a nivel mundial a partir de las variables más débiles que suelen tener los países. Como se sabe existen a disposición índices muy completos como el Democracy Index elaborado por la revista The Economist y otros como los realizados por el proyecto V-Dem. Sin embargo, la teoría es amplia y siempre terminan apareciendo múltiples indicadores para evaluar la calidad democrática de un país o región. Un ejemplo de ello son los indicadores incluídos por el V-dem ( Digital Society Survey-Covid 19). El primero de ellos evalúa el ambiente política del internet  y redes sociales. Todos estos nuevos indicadores podrían contener cientos de páginas 
+de investigación. Los temas son amplios y van desde la respuesta a las fake news como temas de ciberseguridad. El segundo trata de evaluar la transparencia y capacidad de comunicación de los gobiernos. Con esto queremos decir que existen una amplia gama de indicadores que podríamos escoger para evaluar la democracia de los países, y qué no existen indicadores predilectos o suficientes para medir la democracia. Sino que contamos con un amplio grupo de indicadores que en su conjunto nos puede brindar información para identificar patrones comunes o anomalías. En ese sentido, en el presente reporte se emplearán una serie de indicadores escogidos en base de la literatura disponible acerca de la fortaleza de las instituciones democráticas para tratar de responder la siguiente pregunta}
+
+#¿Qué factores de los identificados tienen mayor poder de explicación del estado de las democracia ? En ese sentido, la investigación pretende indagar el grado de correlación entre estas variables, así como comparar la influencia de cada una de estas en el estado de la democracia.**
+
+Es así como el trabajo se divide en las siguientes secciones: primero, se desarrolla la revisión de literatura  acerca del nivel de democracia, su desarrollo y deficiniciones de los posibles factores que afectan su desempeño. En la segunda sección se plantean tres hipótesis que buscan responder la pregunta de investigación. En la tercera sección , e explica la metodologìa de la investigación, la cual se subdivide en tres secciones más: población y muestra, operacionalización de las variables y técnicas estadísticas empleadas (Pruebas de Regresión, diagnóstico, técnicas de reducción de dimensiones) 
+Nuestra variable dependiente en este caso será el índice de democracia liberal  
+###Liberal democracy index (D) (v2x_libdem)
+
+El marco teórico buscaba reunir ciertos indicadores no tradicionales para medir la democracia, o que sean fàcilmente superable por los países. En una lògica de evaluar en países dònde se cumplan esos parámetros establecerlas estas mismas como variables de control, buscar complejizar los modelos con variables màs complicadas de superar o que se debilitan o tiene mayor volublidad en situaciones críticas para la democracia. 
+De igual , manera se incluye un indicador relativo a la independencia judicial respecto del gobierno, particularmente de la corte suprema. La independencia de la corte suprema es un elemento que evaluaremos. 
+
+
+###High court independence (C) (v2juhcind)    
+###Lower court independence (C) (v2juncind)
+
+En la misma planteado, en la introducciòn, nos interesa evaluar los casos de las " REPublicas exclusivas" casos donde existen instituciones formales fuertes y estables pero que lamentablemente no son para todos, sino para un corto margen de la poblaciòn. Para eso usamos un indIcador que busca medir el grado de meritocracia en los países 
+###Access to state business opportunities by socio-economic position (C)(v2peasbecon)
+
+
+
+```{r}
+ggcorrplot(corMatrix_c)
+```
+Como podemos observar existe una relación positiva entre todas las variables independientes. 
+
+
+
+Metodología: 
+
+Población y muestra: 
+
+En el presente trabajo de investigación se utiliza la metodología cuantitativa. Las unidades de análisis son los países a nivel mundial, pues se medirá su nivel democrático. Se utilizará una única base de datos (V-Dem 2022). Lo cual se reconoce es una de las limitaciones más importantes de la misma. Se trabajará con un total de 179 países y 6 variables. 
+
+Operacionalización de variables: 
+
+Respecto a la variable dependientes se escogió la variable “DL_index” dentro del reporte del V-dem 2022. Esto pues representa un modelo bien logrado de los elementos de la democracia liberal. 
+La estructura comenzarà con la ya mencionada variable dependiente “Indice democracia Liberal”, la cuál es una variables numérica, así como también las cuatros variables variables independientes: Independencia de la corte suprema, independencia de otras cortes, oportunidad de empeleo del estado, etc. 
+
+```{r}
+stargazer(hipot1, hipot2, hipot3, type ="text", intercept.bottom = FALSE)
+```
+
+
+```{r}
+fviz_silhouette(res.pam)
+```
+El número de cluster más pertiente es cuatro y la técnica de reducción más útil para este caso fue la pam. 
+
+Ahora, aquí podemos observar la distribución de los casos en un mapa según su número en la base de apoyo . Disponible en GIt. 
+
+```{r}
+proyeccion = cmdscale(g.dist, k=2,add = T) 
+ACONG$dim1 <- proyeccion$points[,1]
+ACONG$dim2 <- proyeccion$points[,2]
+
+base = ggplot(ACONG, aes(x=dim1, y=dim2,label=row.names(ACONG))) 
+base + geom_text(size = 2, aes(color = as.factor(clustPT))) + labs(title = "PAM") 
+```
+
+
+
+CONLUSIONES: 
+
+Se realizaron las verificación de supuestos en todos los modelos. Se puede decir que no todos los modelos superaron las pruebas. Siendo el modelo tres  el más convincente de los tres. 
+
+En todo lso modelos, al tener un R2-ajust mayor 0.753 podemos concluir que explican más del 75% de la varibilidad de la dependiente. 
+Podemos concluir la H0 en todos los casos y concluir que las variables aportan al modelo de regresión lineal multiple. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r include=FALSE}
+library(rio)
+library(DescTools)
+library(ggplot2)
+library(moments)
+library(Rmisc)
+library(e1071)
+library(psych)
+library(dplyr)
+library(gplots)
+library(vcd)
+library(PMCMRplus)
+library(nortest)
+library(car)
+library(stargazer)
+library(lm.beta)
+library(gtools)
+library(jtools)
+library(ggstance)
+library(broom.mixed)
+library(fastDummies)
+library(writexl)
+library(lmtest)
+library(polycor)
+library(ggcorrplot)
+library(matrixcalc)
+library(GPArotation)
+library(lavaan)
+library(BBmisc)
+library(cluster)
+library(factoextra)
+library(qpcR)
+```
+
+
+```{r include=FALSE}
+#Repositorio 
+link="https://github.com/CarlosChavarri23/ESTAD-STICA-II.git"
+```
+
+
+```{r include=FALSE}
+vdem = import("https://github.com/saffron29/Trabajo-Final---EST2/blob/main/V-Dem-CY-Core-v12.rds?raw=true")
+```
+
+
+ANEXO METODOLÓGICO: 
+
+
+#ANÁLISIS DE REGRESIÓN: base de apoyo
+
+```{r include=FALSE}
+#3. Armar la base de apoyo
+
+vdem_carlos = subset(vdem, select = c(country_name, year, v2x_libdem, v2juhcind_ord,v2peasbecon_ord, v2juncind_ord,v2juhccomp_ord ))
+
+
+```
+
+```{r}
+vdem_carlos = vdem_carlos[vdem_carlos$year==2021,]
+```
+
+```{r}
+vdem_carlos[, c(4:6)] = lapply(vdem_carlos[, c(4:6)], ordered)
+str(vdem_carlos$v2x_libdem)
+```
+
+
+```{r include=FALSE}
+row.names(vdem_carlos)=vdem_carlos$country_name
+(vdem_carlos)
+```
+
+```{r include=FALSE}
+vdem_carlos$country_name = NULL
+vdem_carlos$year = NULL
+```
+
+
+*Se ponen a prueba tres modelos de cuatro variables, teniendo como variable de control tres variables (countru¿ )
+
+#4. Hacer la regresión lineal múltiple o gaussiana 
+```{r}
+
+modelo1=formula(v2x_libdem~v2juhcind_ord+v2juncind_ord)
+hipot1 = lm(modelo1, data = vdem_carlos)
+summary(hipot1)
+```
+
+```{r}
+
+modelo2=formula(v2x_libdem~v2juhcind_ord+v2peasbecon_ord)
+hipot2 = lm(modelo2, data = vdem_carlos)
+summary(hipot2)
+
+```
+
+
+```{r}
+modelo3=formula(v2x_libdem~v2juhcind_ord+v2juhccomp_ord)
+hipot3 = lm(modelo3, data = vdem_carlos)
+summary(hipot3)
+```
+
+
+
+
+
+```{r}
+stargazer(hipot1, hipot2, hipot3, type ="text", intercept.bottom = FALSE)
+```
+
+
+#6. Comprobar supuestos de regresión lineal
+
+#6.1. Linealidad
+```{r echo=FALSE}
+plot(hipot1, 1)
+
+
+```
+
+```{r echo=FALSE}
+plot(hipot2, 1)
+
+```
+
+
+```{r echo=FALSE}
+```{undefined echo=FALSE}
+```
+
+LINEALIDAD CONSTANTE EN MODELO 1 Y 2, el modelo 3 presenta una mayor dispersiòn. 
+
+
+#6.2. Homocedasticidad
+```{r}
+plot(hipot1, 3)
+```
+
+```{r echo=FALSE}
+plot(hipot2, 3)
+```
+
+```{r echo=FALSE}
+plot(hipot3, 3)
+```
+
+
+# homocedasticidad (p-value > 0.05)
+```{r echo=FALSE}
+bptest(hipot1)
+```
+EL primer modelo es heterocedástco:! observasción 
+
+```{r echo=FALSE}
+bptest(hipot2)
+```
+De igual manera el modelo 2 es heterocedástico. 
+
+```{r}
+bptest(hipot3)
+```
+
+No hay heterocedasticidad, buen indicio. 
+
+#6.3. Normalidad residual
+#Sí hay normalidad (p-value > 0.05)
+```{r}
+plot(hipot1,2)
+shapiro.test(hipot1$residuals)
+```
+p valor > a 0.005 no hay problema. Existe normalidad de residuos. 
+```{r}
+plot(hipot2,2)
+shapiro.test(hipot2$residuals)
+plot
+
+```
+Existe normalidad de residuos. 
+```{r}
+plot(hipot3,2)
+shapiro.test(hipot3$residuals)
+plot
+```
+Normalidad de residuos. 
+
+#6.4. No multicolinealidad
+```{r echo=FALSE}
+
+library(DescTools)
+VIF(hipot1)
+```
+
+```{r echo=FALSE}
+VIF(hipot2)
+```
+
+
+```{r echo=FALSE}
+VIF(hipot3)
+```
+No existe multicolinealidad en ninguna de las variables 
+
+
+
+```{r}
+ACONG = subset(vdem, select = c(country_name, year, v2x_libdem, v2juhcind_ord, v2juncind_ord,v2peasbecon_ord, v2mecrit_ord, v2dlcountr_ord, v2mecenefm_ord))
+```
+
+```{r}
+ACONG = ACONG[ACONG$year==2021,]
+```
+
+```{r}
+row.names(ACONG) = ACONG$country_name
+```
+
+```{r}
+ACONG$country_name = NULL
+ACONG$year = NULL
+ACONG$v2x_libdem = NULL
+```
+
+
+```{r}
+row.names(ACONG)=ACONG$country_name
+(ACONG)
+```
+
+
+ 
+
+#24. Hacer asignación de clusters en base a número de clusters recomendados
+#24.1. Clusterización no jerárquica (PAM)
+```{r include=FALSE}
+res.pam = pam(g.dist, k = 4, cluster.only = F)
+ACONG$clustPT = res.pam$cluster
+```
+
+#24.2. Clusterización agrupativa (AGNES)
+```{r include=FALSE}
+res.agnes = hcut(g.dist, k = 4, hc_func = "agnes", hc_method = "ward.D")
+ACONG$clustAG = res.agnes$cluster
+```
+
+#24.3. Clusterización divisiva (DIANA)
+```{r include=FALSE}
+res.diana = hcut(g.dist, k = 4, hc_func = "diana")
+ACONG$clustDIV = res.diana$cluster
+```
+
+#25. Dar puntaje a la clusterización
+#25.1. Clusterización no jerárquica (PAM)
+```{r}
+fviz_silhouette(res.pam)
+```
+CASOS MAL AGRUPADOS 
+
+#25.2. Clusterización agrupativa (AGNES)
+```{r}
+fviz_silhouette(res.agnes)
+```
+CASO MORADO Y ROSADO MAL AGRUPADO 
+#25.3. Clusterización divisiva (DIANA)
+```{r}
+fviz_silhouette(res.diana)
+```
+
+
+```{r}
+#26. Encontrar los casos mal clusterizados según cada método
+#26.1. Clusterización no jerárquica (PAM)
+
+silPAM = data.frame(res.pam$silinfo$widths)
+silPAM$country = row.names(silPAM)
+malPAM = silPAM[silPAM$sil_width<0,"country"]%>%sort() 
+```
+
+```{r}
+silAGNES = data.frame(res.agnes$silinfo$widths)
+silAGNES$country = row.names(silAGNES)
+malAGNES = silAGNES[silAGNES$sil_width<0,"country"]%>%sort() 
+```
+
+
+```{r}
+silDIANA = data.frame(res.diana$silinfo$widths)
+silDIANA$country = row.names(silDIANA)
+malDIANA = silDIANA[silDIANA$sil_width<0,"country"]%>%sort() 
+```
+
+#26.4. Juntar elementos mal clusterizados en un solo data frame
+
+Por qué?
+
+```{r}
+mal_Clus = as.data.frame(qpcR:::cbind.na(malPAM, malAGNES, malDIANA))
+mal_Clus
+```
+
+#27. Graficar la mejor clusterización (DIANA)
+```{r}
+proyeccion = cmdscale(g.dist, k=2,add = T) 
+ACONG$dim1 <- proyeccion$points[,1]
+ACONG$dim2 <- proyeccion$points[,2]
+
+base = ggplot(ACONG, aes(x=dim1, y=dim2,label=row.names(ACONG))) 
+base + geom_text(size = 2, aes(color = as.factor(clustPT))) + labs(title = "PAM") 
+```
